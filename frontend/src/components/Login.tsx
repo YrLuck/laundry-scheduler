@@ -29,6 +29,11 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError('');
 
+    if (!credentials.username || !credentials.password) {
+      setError('Пожалуйста, заполните все поля');
+      return;
+    }
+
     try {
       await login(credentials);
       navigate(from, { replace: true });

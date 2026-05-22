@@ -30,6 +30,11 @@ const Register: React.FC = () => {
     e.preventDefault();
     setError('');
 
+    if (!userData.username || !userData.email || !userData.password) {
+      setError('Пожалуйста, заполните обязательные поля');
+      return;
+    }
+
     if (userData.password !== userData.password_confirm) {
       setError('Пароли не совпадают');
       return;
