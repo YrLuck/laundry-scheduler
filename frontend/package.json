@@ -31,6 +31,15 @@
     "test": "react-scripts test --coverage",
     "eject": "react-scripts eject"
   },
+  "jest": {
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "src/__tests__/__setup__\\.ts$"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!(react-router|react-router-dom|@remix-run)/)"
+    ]
+  },
   "browserslist": {
     "production": [
       ">0.2%",

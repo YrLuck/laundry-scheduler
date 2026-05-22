@@ -72,14 +72,6 @@ describe('AuthContext', () => {
 
   test('login updates authentication state', async () => {
     const { authAPI } = require('../services/api');
-    
-    authAPI.login.mockResolvedValue({
-      data: {
-        access_token: 'test_access_token',
-        refresh_token: 'test_refresh_token',
-        token_type: 'bearer'
-      }
-    });
 
     authAPI.getProfile.mockResolvedValue({
       data: {
@@ -89,12 +81,11 @@ describe('AuthContext', () => {
       }
     });
 
+    // Устанавливаем токен ДО рендера — AuthContext читает его при mount
+    localStorage.setItem('access_token', 'test_access_token');
+
     renderWithAuthProvider(<TestComponent />);
 
-    // Симулируем вход через localStorage
-    localStorage.setItem('access_token', 'test_access_token');
-    
-    // Перерисовываем компонент
     await waitFor(() => {
       expect(screen.getByTestId('user').textContent).toBe('testuser');
     });
