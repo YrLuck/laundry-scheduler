@@ -54,7 +54,14 @@ describe('Register Component', () => {
   test('shows error when passwords do not match', async () => {
     renderWithProviders(<Register />);
 
-    fireEvent.change(screen.getByLabelText(/пароль/i), {
+    // Fill required fields so we reach the password-match check
+    fireEvent.change(screen.getByLabelText(/имя пользователя/i), {
+      target: { value: 'testuser' }
+    });
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'test@example.com' }
+    });
+    fireEvent.change(screen.getByLabelText(/^пароль:/i), {
       target: { value: 'password123' }
     });
     fireEvent.change(screen.getByLabelText(/подтверждение пароля/i), {
