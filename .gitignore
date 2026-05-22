@@ -1,0 +1,40 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Tests / Coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# DB
+*.db
+*.sqlite
+
+# Env
+.env
+.env.local
+
+# Node
+node_modules/
+
+# React build
+frontend/build/
+
+# Docker uploads
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+frontend/coverage/
