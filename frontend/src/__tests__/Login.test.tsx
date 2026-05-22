@@ -7,10 +7,18 @@ import { BrowserRouter } from 'react-router-dom';
 import Login from '../components/Login';
 import { AuthProvider } from '../contexts/AuthContext';
 
-// Моки для API
+// Мокаем весь API-модуль — включая getProfile чтобы AuthProvider не падал
 jest.mock('../services/api', () => ({
   authAPI: {
     login: jest.fn(),
+    getProfile: jest.fn().mockRejectedValue(new Error('No token')),
+    refreshToken: jest.fn().mockRejectedValue(new Error('No token')),
+  },
+  default: {
+    interceptors: {
+      request: { use: jest.fn() },
+      response: { use: jest.fn() },
+    },
   },
 }));
 
@@ -27,11 +35,14 @@ const renderWithProviders = (component: React.ReactElement) => {
 describe('Login Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorage.clear();
+    const { authAPI } = require('../services/api');
+    authAPI.getProfile.mockRejectedValue(new Error('No token'));
   });
 
   test('renders login form', () => {
     renderWithProviders(<Login />);
-    
+
     expect(screen.getByLabelText(/имя пользователя/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/пароль/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /войти/i })).toBeInTheDocument();
@@ -63,10 +74,9 @@ describe('Login Component', () => {
     renderWithProviders(<Login />);
 
     const passwordInput = screen.getByLabelText(/пароль/i);
-    const toggleButton = screen.getByRole('button', { name: /👁️/i });
-
     expect(passwordInput).toHaveAttribute('type', 'password');
 
+    const toggleButton = screen.getByText('👁️');
     fireEvent.click(toggleButton);
     expect(passwordInput).toHaveAttribute('type', 'text');
 
@@ -78,11 +88,8 @@ describe('Login Component', () => {
     renderWithProviders(<Login />);
 
     const submitButton = screen.getByRole('button', { name: /войти/i });
-    
-    // Пытаемся отправить пустую форму
     fireEvent.click(submitButton);
 
-    // Форма не должна отправляться
     const { authAPI } = require('../services/api');
     expect(authAPI.login).not.toHaveBeenCalled();
   });

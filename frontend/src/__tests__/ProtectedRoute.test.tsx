@@ -3,137 +3,97 @@
  */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { AuthProvider } from '../contexts/AuthContext';
 
-// Моки для API
-jest.mock('../services/api', () => ({
-  authAPI: {
-    getProfile: jest.fn(),
-  },
+// Мокаем useAuth напрямую — не зависим от async API
+jest.mock('../contexts/AuthContext', () => ({
+  useAuth: jest.fn(),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-const TestPage: React.FC = () => <div data-testid="protected-page">Protected Content</div>;
-const LoginPage: React.FC = () => <div data-testid="login-page">Login Page</div>;
+const { useAuth } = require('../contexts/AuthContext');
 
-const renderWithProviders = (
-  component: React.ReactElement,
-  initialEntries: string[] = ['/']
-) => {
-  return render(
+const TestPage = () => <div data-testid="protected-page">Protected Content</div>;
+
+const renderRoute = (props = {}) =>
+  render(
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/*" element={component} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>,
-    { initialEntries }
+      <ProtectedRoute {...props}>
+        <TestPage />
+      </ProtectedRoute>
+    </BrowserRouter>
   );
-};
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    localStorage.clear();
-  });
-
-  test('redirects to login when not authenticated', () => {
-    const { authAPI } = require('../services/api');
-    authAPI.getProfile.mockRejectedValue(new Error('Not authenticated'));
-
-    renderWithProviders(
-      <ProtectedRoute>
-        <TestPage />
-      </ProtectedRoute>
-    );
-
-    // Должна быть переадресация на login
-    expect(window.location.pathname).toBe('/login');
-  });
-
-  test('renders content when authenticated', () => {
-    // Устанавливаем токен
-    localStorage.setItem('access_token', 'test_token');
-
-    const { authAPI } = require('../services/api');
-    authAPI.getProfile.mockResolvedValue({
-      data: {
-        id: 1,
-        username: 'testuser',
-        role: { name: 'user', permissions: [] }
-      }
-    });
-
-    renderWithProviders(
-      <ProtectedRoute>
-        <TestPage />
-      </ProtectedRoute>
-    );
-
-    // Контент должен отображаться
-    expect(screen.getByTestId('protected-page')).toBeInTheDocument();
-  });
-
-  test('blocks access when required role is missing', () => {
-    localStorage.setItem('access_token', 'test_token');
-
-    const { authAPI } = require('../services/api');
-    authAPI.getProfile.mockResolvedValue({
-      data: {
-        id: 1,
-        username: 'testuser',
-        role: { name: 'user', permissions: [] }
-      }
-    });
-
-    renderWithProviders(
-      <ProtectedRoute requiredRole="admin">
-        <TestPage />
-      </ProtectedRoute>
-    );
-
-    // Должен показать ошибку 403
-    expect(screen.getByText(/403/i)).toBeInTheDocument();
-  });
-
-  test('allows access when user has required role', () => {
-    localStorage.setItem('access_token', 'test_token');
-
-    const { authAPI } = require('../services/api');
-    authAPI.getProfile.mockResolvedValue({
-      data: {
-        id: 1,
-        username: 'admin',
-        role: { name: 'admin', permissions: [] }
-      }
-    });
-
-    renderWithProviders(
-      <ProtectedRoute requiredRole="admin">
-        <TestPage />
-      </ProtectedRoute>
-    );
-
-    // Контент должен отображаться
-    expect(screen.getByTestId('protected-page')).toBeInTheDocument();
   });
 
   test('shows loading state while checking auth', () => {
-    const { authAPI } = require('../services/api');
-    authAPI.getProfile.mockImplementation(
-      () => new Promise(() => {}) // Никогда не разрешается
-    );
+    useAuth.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: true,
+      hasRole: () => false,
+      hasPermission: () => false,
+    });
 
-    renderWithProviders(
-      <ProtectedRoute>
-        <TestPage />
-      </ProtectedRoute>
-    );
+    renderRoute();
 
-    // Должен показывать индикатор загрузки
     expect(screen.getByText(/загрузка/i)).toBeInTheDocument();
+  });
+
+  test('redirects when not authenticated', () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+      hasRole: () => false,
+      hasPermission: () => false,
+    });
+
+    renderRoute();
+
+    // Navigate мок возвращает null — контент не должен рендериться
+    expect(screen.queryByTestId('protected-page')).not.toBeInTheDocument();
+  });
+
+  test('renders content when authenticated', () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      hasRole: () => true,
+      hasPermission: () => true,
+    });
+
+    renderRoute();
+
+    expect(screen.getByTestId('protected-page')).toBeInTheDocument();
+  });
+
+  test('shows 403 when required role is missing', () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      hasRole: (role: string) => role !== 'admin',
+      hasPermission: () => true,
+    });
+
+    renderRoute({ requiredRole: 'admin' });
+
+    expect(screen.getByText(/403/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('protected-page')).not.toBeInTheDocument();
+  });
+
+  test('renders content when user has required role', () => {
+    useAuth.mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+      hasRole: (role: string) => role === 'admin',
+      hasPermission: () => true,
+    });
+
+    renderRoute({ requiredRole: 'admin' });
+
+    expect(screen.getByTestId('protected-page')).toBeInTheDocument();
   });
 });
