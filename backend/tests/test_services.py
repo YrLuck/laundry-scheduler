@@ -111,16 +111,16 @@ class TestAuthService:
         
         assert result is None
     
-    def test_refresh_tokens(self, db_session: Session):
+    def test_refresh_tokens(self, db_session: Session, test_user: dict):
         """Тест обновления токенов"""
         auth_service = AuthService(UserRepository(db_session))
-        
-        # Создаем refresh токен
-        refresh_token = auth_service.create_refresh_token({"sub": "testuser"})
-        
+
+        # Создаем refresh токен для существующего пользователя
+        refresh_token = auth_service.create_refresh_token({"sub": test_user["username"]})
+
         # Обновляем токены
         new_tokens = auth_service.refresh_tokens(refresh_token)
-        
+
         assert new_tokens is not None
         assert "access_token" in new_tokens
         assert "refresh_token" in new_tokens

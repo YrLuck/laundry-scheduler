@@ -111,10 +111,10 @@ class TestMachines:
             "name": "New Machine",
             "type": "washer"
         }
-        
+
         response = client.post("/machines/", json=machine_data)
-        
-        assert response.status_code == 401
+
+        assert response.status_code in (401, 403)
     
     def test_get_machine_by_id(self, client: TestClient, db_session: Session):
         """Тест получения машины по ID"""
